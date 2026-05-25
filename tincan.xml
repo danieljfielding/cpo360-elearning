@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<tincan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://projecttincan.com/tincan.xsd">
+  <activities>
+    <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise" type="http://adlnet.gov/expapi/activities/course">
+      <name lang="en-US">Contract Law Essentials for Procurement Professionals</name>
+      <description lang="en-US">Are you ready to master the legal foundations that underpin every supplier relationship? In this course, you&#39;ll discover the core principles of contract law tailored for procurement professionals. Learn how to confidently navigate agreements, negotiate terms, and manage contracts to protect your organisation and drive better outcomes. By the end, you&#39;ll have the practical knowledge to avoid costly mistakes, resolve disputes, and apply contract law concepts directly to your procurement work.</description>
+      <launch lang="en-US">scormdriver/indexAPI.html</launch>
+    </activity>
+      <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise/cmpkma3s1002h357sf1tvctwg" type="http://adlnet.gov/expapi/activities/module">
+      <name lang="en-US">Understanding Contracts in Procurement/blocks</name>
+      <description lang="en-US"></description>
+    </activity>
+          <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise/cmpkma3s1002i357sh7m79nj4" type="http://adlnet.gov/expapi/activities/module">
+      <name lang="en-US">Forming a Legally Binding Contract/blocks</name>
+      <description lang="en-US"></description>
+    </activity>
+          <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise/cmpkma3s1002j357snlkvbixz" type="http://adlnet.gov/expapi/activities/module">
+      <name lang="en-US">Key Legal Terms and Their Impact/blocks</name>
+      <description lang="en-US"></description>
+    </activity>
+          <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise/cmpkma3s1002k357sx2o2w26l" type="http://adlnet.gov/expapi/activities/module">
+      <name lang="en-US">Contract Termination: Processes and Pitfalls/blocks</name>
+      <description lang="en-US"></description>
+    </activity>
+          <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise/cmpkma3s1002l357swokj9hys" type="http://adlnet.gov/expapi/activities/module">
+      <name lang="en-US">Managing Breach and Remedies/blocks</name>
+      <description lang="en-US"></description>
+    </activity>
+          <activity id="http://wAfZfLfN-pCRgfTmmYuWyalQxyzErlTt_rise/cmpkma3s1002m357ssuv5ijce" type="http://adlnet.gov/expapi/activities/module">
+      <name lang="en-US">Bringing It All Together: Review and Practical Application/blocks</name>
+      <description lang="en-US"></description>
+    </activity>
+        </activities>
+</tincan>
