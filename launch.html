@@ -1,11 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<script>
-  // Read all query params and redirect to the actual course
-  const params = window.location.search;
-  window.location.replace('./scormdriver/indexAPI.html' + params);
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading course...</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1a2332;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: white;
+    }
+    .loader {
+      text-align: center;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #028090;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    p {
+      margin: 0;
+      font-size: 16px;
+      opacity: 0.8;
+    }
+  </style>
 </head>
-<body>Loading course...</body>
+<body>
+  <div class="loader">
+    <div class="spinner"></div>
+    <p>Loading course...</p>
+  </div>
+
+  <script>
+    // Read all query parameters from this URL
+    // and redirect to the actual xAPI course entry point
+    // preserving every parameter exactly as received.
+    //
+    // Launch URL format from CPO360:
+    // https://cpo360-elearning.pages.dev/launch.html
+    //   ?endpoint=https%3A%2F%2F...xapi-receiver%2F
+    //   &auth=eGFwaTp4YXBp
+    //   &actor=%7B%22objectType%22...%7D
+    //
+    // This page passes them straight through to the SCORM driver.
+
+    var params = window.location.search;
+
+    if (params) {
+      // Redirect to the xAPI entry point with all params intact
+      window.location.replace('./scormdriver/indexAPI.html' + params);
+    } else {
+      // No params — redirect to the SCORM content cover page
+      window.location.replace('./scormcontent/index.html');
+    }
+  </script>
+</body>
 </html>
