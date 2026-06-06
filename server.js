@@ -56,6 +56,11 @@ const server = http.createServer((req, res) => {
     return serve(res, path.join(__dirname, 'index.html'));
   }
 
+  // Rewrite bare /lib/ and /assets/ to scormcontent subfolder
+  if (urlPath.startsWith('/lib/') || urlPath.startsWith('/assets/')) {
+    return serve(res, path.join(__dirname, 'scormcontent', urlPath));
+  }
+
   const fsPath = path.join(__dirname, urlPath);
 
   // Check if exact file exists
