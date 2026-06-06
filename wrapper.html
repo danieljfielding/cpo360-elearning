@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading course...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a2332;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: white;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #028090;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { font-size: 16px; opacity: 0.8; }
+    #course-frame {
+      display: none;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Loading course...</p>
+</div>
+
+<iframe id="course-frame" allowfullscreen></iframe>
+
+<script>
+// ─── Parse launch parameters ──────────────────────────────────────────────────
+var params = new URLSearchParams(window.location.search);
+var endpoint = params.get('endpoint') || '';
+var auth     = params.get('auth') || '';
+var actorRaw = params.get('actor') || '{}';
+
+var actor = {};
+try { actor = JSON.parse(actorRaw); } catch(e) {}
+
+var actorEmail = (actor.mbox || '').replace('mailto:', '').toLowerCase();
+var actorName  = actor.name || actorEmail;
+
+// Course identifier — embedded at build time
+var COURSE_ID  = 'wAfZfLfN-pCRgfTmmYuWyalQxyzErITt_rise';
+var COURSE_URL = './scormcontent/index.html';
+
+// ─── State store ──────────────────────────────────────────────────────────────
+// Holds all SCORM data model values in memory.
+// Persisted to xAPI receiver via SaveState / restored via LoadState.
+var cmiData = {
+  'cmi.core.lesson_status':    'not attempted',
+  'cmi.core.lesson_location':  '',
+  'cmi.core.score.raw':        '',
+  'cmi.core.score.min':        '',
+  'cmi.core.score.max':        '',
+  'cmi.core.session_time':     '',
+  'cmi.suspend_data':          '',
+  'cmi.core.student_id':       actorEmail,
+  'cmi.core.student_name':     actorName,
+  'cmi.core.entry':            'ab-initio',
+  'cmi.core.exit':             '',
+  'cmi.core.credit':           'credit',
+  'cmi.core.lesson_mode':      'normal',
+  'cmi.core.total_time':       '0000:00:00.00',
+  'cmi.launch_data':           '',
+  'cmi.student_data.mastery_score': '',
+};
+
+var initialized  = false;
+var stateLoaded  = false;
+var isDirty      = false; // true when data has changed since last save
+
+// ─── xAPI helpers ─────────────────────────────────────────────────────────────
+function buildHeaders() {
+  return {
+    'Content-Type':               'application/json',
+    'X-Experience-API-Version':   '1.0.3',
+    'Authorization':              'Basic ' + auth
+  };
+}
+
+function buildActor() {
+  return {
+    objectType: 'Agent',
+    name: actorName,
+    mbox: 'mailto:' + actorEmail
+  };
+}
+
+function sendStatement(verb, verbDisplay, extra) {
+  if (!endpoint || !actorEmail) return;
+  var statement = {
+    actor: buildActor(),
+    verb: {
+      id: 'http://adlnet.gov/expapi/verbs/' + verb,
+      display: { 'en-US': verbDisplay }
+    },
+    object: {
+      id: 'http://wAfZfLfN-pCRgfTmmYuWyalQxyzErITt_rise',
+      objectType: 'Activity',
+      definition: {
+        type: 'http://adlnet.gov/expapi/activities/course',
+        name: { 'en-US': 'Introduction to Contract Law' }
+      }
+    },
+    context: {
+      registration: actorEmail + '_' + COURSE_ID
+    }
+  };
+
+  if (extra) {
+    Object.assign(statement, extra);
+  }
+
+  var url = endpoint + 'statements';
+  fetch(url, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify([statement])
+  }).catch(function(e) { console.warn('xAPI statement failed:', e); });
+}
+
+// Save SCORM state to xAPI state endpoint so learner can resume
+function saveState() {
+  if (!endpoint || !actorEmail || !isDirty) return;
+  var stateUrl = endpoint + 'activities/state'
+    + '?stateId=SCORM_progress'
+    + '&activityId=' + encodeURIComponent('http://' + COURSE_ID)
+    + '&agent=' + encodeURIComponent(JSON.stringify(buildActor()));
+
+  fetch(stateUrl, {
+    method: 'PUT',
+    headers: buildHeaders(),
+    body: JSON.stringify(cmiData)
+  }).then(function() {
+    isDirty = false;
+  }).catch(function(e) { console.warn('State save failed:', e); });
+}
+
+// Load saved SCORM state from xAPI state endpoint
+function loadState(callback) {
+  if (!endpoint || !actorEmail) { callback(false); return; }
+  var stateUrl = endpoint + 'activities/state'
+    + '?stateId=SCORM_progress'
+    + '&activityId=' + encodeURIComponent('http://' + COURSE_ID)
+    + '&agent=' + encodeURIComponent(JSON.stringify(buildActor()));
+
+  fetch(stateUrl, {
+    method: 'GET',
+    headers: buildHeaders()
+  }).then(function(res) {
+    if (res.status === 200) {
+      return res.json().then(function(saved) {
+        if (saved && typeof saved === 'object') {
+          Object.assign(cmiData, saved);
+          // Set re-entry mode if we have a saved location
+          if (cmiData['cmi.core.lesson_location']) {
+            cmiData['cmi.core.entry'] = 'resume';
+          }
+          console.log('State restored — resuming from:', cmiData['cmi.core.lesson_location']);
+        }
+        callback(true);
+      });
+    } else {
+      callback(false);
+    }
+  }).catch(function() { callback(false); });
+}
+
+// ─── SCORM 1.2 API ────────────────────────────────────────────────────────────
+// Exposed as window.API so the iframe can find it via parent.API
+var SCORM_API = {
+
+  LMSInitialize: function(param) {
+    console.log('LMSInitialize');
+    initialized = true;
+    sendStatement('initialized', 'initialized');
+    return 'true';
+  },
+
+  LMSFinish: function(param) {
+    console.log('LMSFinish — status:', cmiData['cmi.core.lesson_status']);
+    saveState();
+
+    var status = cmiData['cmi.core.lesson_status'];
+    if (status === 'passed' || status === 'completed') {
+      sendStatement('completed', 'completed', {
+        result: {
+          success: status === 'passed',
+          completion: true,
+          score: cmiData['cmi.core.score.raw']
+            ? { raw: parseFloat(cmiData['cmi.core.score.raw']) }
+            : undefined
+        }
+      });
+    } else {
+      sendStatement('suspended', 'suspended');
+    }
+    initialized = false;
+    return 'true';
+  },
+
+  LMSGetValue: function(element) {
+    var val = cmiData.hasOwnProperty(element) ? cmiData[element] : '';
+    console.log('LMSGetValue', element, '=', val);
+    return val;
+  },
+
+  LMSSetValue: function(element, value) {
+    console.log('LMSSetValue', element, '=', value);
+    cmiData[element] = value;
+    isDirty = true;
+
+    // Periodically save state when location changes (bookmark)
+    if (element === 'cmi.core.lesson_location' && value) {
+      saveState();
+      sendStatement('progressed', 'progressed', {
+        result: { extensions: { 'http://id.tincanapi.com/extension/bookmark': value } }
+      });
+    }
+
+    // Send completion statement immediately when status is set
+    if (element === 'cmi.core.lesson_status') {
+      if (value === 'passed' || value === 'completed') {
+        saveState();
+        sendStatement('completed', 'completed', {
+          result: {
+            success: value === 'passed',
+            completion: true
+          }
+        });
+      }
+    }
+
+    return 'true';
+  },
+
+  LMSCommit: function(param) {
+    console.log('LMSCommit');
+    saveState();
+    return 'true';
+  },
+
+  LMSGetLastError: function() { return '0'; },
+  LMSGetErrorString: function(code) { return ''; },
+  LMSGetDiagnostic: function(code) { return ''; }
+};
+
+// Expose as window.API (SCORM 1.2 standard)
+window.API = SCORM_API;
+
+// ─── Launch sequence ──────────────────────────────────────────────────────────
+function launchCourse() {
+  var frame = document.getElementById('course-frame');
+  var loading = document.getElementById('loading');
+
+  frame.onload = function() {
+    loading.style.display = 'none';
+    frame.style.display = 'block';
+    frame.style.height = '100vh';
+  };
+
+  frame.src = COURSE_URL + window.location.search;
+  sendStatement('attempted', 'attempted');
+}
+
+// Load any saved state first, then launch
+loadState(function(resumed) {
+  launchCourse();
+});
+
+// Auto-save every 30 seconds while course is open
+setInterval(function() {
+  if (initialized && isDirty) {
+    saveState();
+  }
+}, 30000);
+
+// Save state when page is unloaded (learner closes tab)
+window.addEventListener('beforeunload', function() {
+  if (initialized) {
+    SCORM_API.LMSFinish('');
+  }
+});
+</script>
+
+</body>
+</html>
