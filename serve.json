@@ -3,17 +3,31 @@
     {
       "source": "**",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "X-Frame-Options", "value": "ALLOWALL" },
-        { "key": "Content-Security-Policy", "value": "frame-ancestors *" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "ALLOWALL"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors *"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/wrapper", "destination": "/wrapper.html" },
-    { "source": "/launch", "destination": "/launch.html" }
+    {
+      "source": "/wrapper",
+      "destination": "/wrapper.html"
+    },
+    {
+      "source": "/launch",
+      "destination": "/launch.html"
+    }
   ],
   "cleanUrls": false,
-  "trailingSlash": false,
-  "directoryListing": false
+  "trailingSlash": false
 }
