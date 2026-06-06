@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "CPO360 eLearning courses",
   "scripts": {
-    "start": "serve . --listen $PORT --no-clipboard"
-  },
-  "dependencies": {
-    "serve": "^14.2.0"
+    "start": "node server.js"
   }
 }
