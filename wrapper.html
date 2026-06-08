@@ -20,15 +20,17 @@
 
 <script>
 // ── Parse launch params ───────────────────────────────────────────────────────
-var params   = new URLSearchParams(window.location.search);
-var endpoint = params.get('endpoint') || '';
-var auth     = params.get('auth')     || '';
-var actorRaw = params.get('actor')    || '{}';
-var actor    = {};
+var params    = new URLSearchParams(window.location.search);
+var endpoint  = params.get('endpoint')  || '';
+var auth      = params.get('auth')      || '';
+var actorRaw  = params.get('actor')     || '{}';
+var courseDir = params.get('course')    || 'scormcontent'; // default for backwards compat
+var courseId  = params.get('course_id') || '';             // xapi activity id
+
+var actor = {};
 try { actor = JSON.parse(actorRaw); } catch(e) {}
 var actorEmail = (actor.mbox || '').replace('mailto:','').toLowerCase().trim();
 var actorName  = actor.name || actorEmail;
-var COURSE_ID  = 'wAfZfLfN-pCRgfTmmYuWyalQxyzErITt_rise';
 
 // ── CMI data store ────────────────────────────────────────────────────────────
 var cmiData = {
@@ -53,38 +55,62 @@ var isDirty     = false;
 
 // ── xAPI helpers ──────────────────────────────────────────────────────────────
 function headers() {
-  return { 'Content-Type': 'application/json', 'X-Experience-API-Version': '1.0.3', 'Authorization': 'Basic ' + auth };
+  return {
+    'Content-Type': 'application/json',
+    'X-Experience-API-Version': '1.0.3',
+    'Authorization': 'Basic ' + auth
+  };
 }
 function agentObj() {
   return { objectType: 'Agent', name: actorName, mbox: 'mailto:' + actorEmail };
 }
 function activityObj() {
   return {
-    id: 'http://' + COURSE_ID,
+    id: courseId,
     objectType: 'Activity',
-    definition: { type: 'http://adlnet.gov/expapi/activities/course', name: { 'en-US': 'Introduction to Contract Law' } }
+    definition: { type: 'http://adlnet.gov/expapi/activities/course' }
   };
 }
 function sendStatement(verb, verbDisplay, result) {
-  if (!endpoint || !actorEmail) return;
-  var s = { actor: agentObj(), verb: { id: 'http://adlnet.gov/expapi/verbs/' + verb, display: { 'en-US': verbDisplay } }, object: activityObj() };
+  if (!endpoint || !actorEmail || !courseId) return;
+  var s = {
+    actor: agentObj(),
+    verb: { id: 'http://adlnet.gov/expapi/verbs/' + verb, display: { 'en-US': verbDisplay } },
+    object: activityObj()
+  };
   if (result) s.result = result;
-  fetch(endpoint + 'statements', { method: 'POST', headers: headers(), body: JSON.stringify([s]) }).catch(function(){});
+  fetch(endpoint + 'statements', {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify([s])
+  }).catch(function(){});
 }
 function saveState() {
-  if (!endpoint || !actorEmail) return;
-  var url = endpoint + 'activities/state?stateId=SCORM_progress&activityId=' + encodeURIComponent('http://' + COURSE_ID) + '&agent=' + encodeURIComponent(JSON.stringify(agentObj()));
-  fetch(url, { method: 'PUT', headers: headers(), body: JSON.stringify(cmiData) }).then(function(){ isDirty = false; }).catch(function(){});
+  if (!endpoint || !actorEmail || !courseId) return;
+  var url = endpoint + 'activities/state?stateId=SCORM_progress'
+    + '&activityId=' + encodeURIComponent(courseId)
+    + '&agent=' + encodeURIComponent(JSON.stringify(agentObj()));
+  fetch(url, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify(cmiData)
+  }).then(function(){ isDirty = false; }).catch(function(){});
 }
 function loadState(cb) {
-  if (!endpoint || !actorEmail) { cb(false); return; }
-  var url = endpoint + 'activities/state?stateId=SCORM_progress&activityId=' + encodeURIComponent('http://' + COURSE_ID) + '&agent=' + encodeURIComponent(JSON.stringify(agentObj()));
+  if (!endpoint || !actorEmail || !courseId) { cb(false); return; }
+  var url = endpoint + 'activities/state?stateId=SCORM_progress'
+    + '&activityId=' + encodeURIComponent(courseId)
+    + '&agent=' + encodeURIComponent(JSON.stringify(agentObj()));
   fetch(url, { method: 'GET', headers: headers() }).then(function(res) {
     if (res.ok) {
       res.json().then(function(saved) {
         if (saved && typeof saved === 'object') {
           Object.assign(cmiData, saved);
           if (cmiData['cmi.core.lesson_location']) cmiData['cmi.core.entry'] = 'resume';
+          // If already completed, set review mode
+          if (cmiData['cmi.core.lesson_status'] === 'completed' || cmiData['cmi.core.lesson_status'] === 'passed') {
+            cmiData['cmi.core.entry'] = 'review';
+          }
         }
         cb(true);
       }).catch(function(){ cb(false); });
@@ -135,8 +161,8 @@ var API = {
 // ── Expose standard SCORM API ─────────────────────────────────────────────────
 window.API = API;
 
-// ── Expose Rise/Storyline proxy functions directly on window ──────────────────
-// Rise calls pick(LMSProxySelections, window.parent, ...) looking for these
+// ── Expose Rise proxy functions directly on window ────────────────────────────
+// Rise calls pick(LMSProxySelections, window.parent, ...) — looks here directly
 window.CommitData    = function() { saveState(); };
 window.ConcedeControl = function() {};
 window.CreateResponseIdentifier = function() { return ''; };
@@ -160,7 +186,7 @@ window.SetFailed     = function() {
   sendStatement('failed', 'failed', { success: false });
 };
 window.SetLanguagePreference = function() {};
-window.SetObjectiveStatus = function() {};
+window.SetObjectiveStatus    = function() {};
 window.SetPassed     = function() {
   cmiData['cmi.core.lesson_status'] = 'passed';
   saveState();
@@ -190,8 +216,8 @@ function launch() {
     frame.style.display   = 'block';
   });
 
-  // Load via bridge so window.parent.API and proxy funcs are available
-  frame.src = '/bridge.html';
+  // bridge.html copies window.parent API then redirects to the course folder
+  frame.src = '/bridge.html?course=' + encodeURIComponent(courseDir);
 }
 
 // Auto-save every 30s

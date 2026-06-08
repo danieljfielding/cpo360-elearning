@@ -23,6 +23,15 @@ const MIME = {
   '.zip':  'application/zip',
 };
 
+// All course content folders — add new ones here as courses are added
+const COURSE_DIRS = [
+  'scormcontent',
+  'scormcontent-category-mgmt',
+  'scormcontent-contract-mgmt',
+  'scormcontent-ethics',
+  'scormcontent-stakeholder-mgmt',
+];
+
 function serve(res, filePath) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
@@ -56,9 +65,26 @@ const server = http.createServer((req, res) => {
     return serve(res, path.join(__dirname, 'index.html'));
   }
 
-  // Rewrite bare /lib/ and /assets/ to scormcontent subfolder
+  // Rewrite bare /lib/ and /assets/ to the correct course folder
+  // Rise requests these as root-relative paths — we need to find which course they belong to
   if (urlPath.startsWith('/lib/') || urlPath.startsWith('/assets/')) {
-    return serve(res, path.join(__dirname, 'scormcontent', urlPath));
+    // Check each course dir to find which one has the file
+    let found = false;
+    const checks = COURSE_DIRS.map(dir => path.join(__dirname, dir, urlPath));
+
+    function tryNext(i) {
+      if (i >= checks.length) {
+        // Not found in any course dir — try root
+        return serve(res, path.join(__dirname, urlPath));
+      }
+      fs.stat(checks[i], (err, stat) => {
+        if (!err && stat.isFile()) {
+          return serve(res, checks[i]);
+        }
+        tryNext(i + 1);
+      });
+    }
+    return tryNext(0);
   }
 
   const fsPath = path.join(__dirname, urlPath);

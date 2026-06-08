@@ -5,8 +5,13 @@
 <script>
   // Copy API from parent wrapper before Rise loads
   window.API = window.parent.API;
-  // Now navigate to the course — window.API is already set
-  window.location.href = '/scormcontent/index.html';
+
+  // Read which course folder to load
+  var params    = new URLSearchParams(window.location.search);
+  var courseDir = params.get('course') || 'scormcontent';
+
+  // Navigate to the course — window.API is already set
+  window.location.href = '/' + courseDir + '/index.html';
 </script>
 </body>
 </html>
