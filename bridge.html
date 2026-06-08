@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+  // Copy API from parent wrapper before Rise loads
+  window.API = window.parent.API;
+  // Now navigate to the course — window.API is already set
+  window.location.href = '/scormcontent/index.html';
+</script>
+</body>
+</html>
