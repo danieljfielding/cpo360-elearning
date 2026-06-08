@@ -133,7 +133,7 @@ var API = {
 };
 
 // ── Expose API on wrapper window ──────────────────────────────────────────────
-// Rise inside the iframe calls parent.API — this window IS the parent
+// bridge.html (loaded in iframe) will copy this via window.parent.API
 window.API = API;
 
 // ── Launch ────────────────────────────────────────────────────────────────────
@@ -146,7 +146,8 @@ function launch() {
     frame.style.display   = 'block';
   });
 
-  frame.src = '/scormcontent/index.html';
+  // Load bridge.html first — it copies window.parent.API then redirects to course
+  frame.src = '/bridge.html';
 }
 
 // Auto-save every 30s
