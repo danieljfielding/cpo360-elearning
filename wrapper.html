@@ -92,8 +92,7 @@ function loadState(cb) {
   }).catch(function(){ cb(false); });
 }
 
-// ── SCORM 1.2 API object ──────────────────────────────────────────────────────
-// Exposed on window so Rise can find it via parent.API or window.parent.API
+// ── SCORM 1.2 API ─────────────────────────────────────────────────────────────
 var API = {
   LMSInitialize: function(p) {
     initialized = true;
@@ -133,7 +132,8 @@ var API = {
   LMSGetDiagnostic:  function(c) { return ''; }
 };
 
-// Expose globally — Rise looks for window.API and window.parent.API
+// ── Expose API on wrapper window ──────────────────────────────────────────────
+// Rise inside the iframe calls parent.API — this window IS the parent
 window.API = API;
 
 // ── Launch ────────────────────────────────────────────────────────────────────
@@ -142,16 +142,10 @@ function launch() {
   var loading = document.getElementById('loading');
 
   frame.addEventListener('load', function() {
-    // Inject API into iframe's window so Rise can find it
-    try {
-      frame.contentWindow.API = API;
-      frame.contentWindow.parent = window;
-    } catch(e) { /* cross-origin guard — same origin so should work */ }
     loading.style.display = 'none';
     frame.style.display   = 'block';
   });
 
-  // Load scormcontent WITHOUT passing query params (avoids path resolution issues)
   frame.src = '/scormcontent/index.html';
 }
 
