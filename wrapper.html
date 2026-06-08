@@ -132,9 +132,53 @@ var API = {
   LMSGetDiagnostic:  function(c) { return ''; }
 };
 
-// ── Expose API on wrapper window ──────────────────────────────────────────────
-// bridge.html (loaded in iframe) will copy this via window.parent.API
+// ── Expose standard SCORM API ─────────────────────────────────────────────────
 window.API = API;
+
+// ── Expose Rise/Storyline proxy functions directly on window ──────────────────
+// Rise calls pick(LMSProxySelections, window.parent, ...) looking for these
+window.CommitData    = function() { saveState(); };
+window.ConcedeControl = function() {};
+window.CreateResponseIdentifier = function() { return ''; };
+window.Finish        = function() { API.LMSFinish(''); };
+window.GetDataChunk  = function() { return cmiData['cmi.suspend_data'] || ''; };
+window.GetStatus     = function() { return cmiData['cmi.core.lesson_status']; };
+window.GetStudentID  = function() { return actorEmail; };
+window.MatchingResponse = function() {};
+window.RecordFillInInteraction = function() {};
+window.RecordMatchingInteraction = function() {};
+window.RecordMultipleChoiceInteraction = function() {};
+window.SetBookmark   = function(val) {
+  cmiData['cmi.core.lesson_location'] = val;
+  saveState();
+  sendStatement('progressed', 'progressed', { extensions: { bookmark: val } });
+};
+window.SetDataChunk  = function(val) { cmiData['cmi.suspend_data'] = val; isDirty = true; };
+window.SetFailed     = function() {
+  cmiData['cmi.core.lesson_status'] = 'failed';
+  saveState();
+  sendStatement('failed', 'failed', { success: false });
+};
+window.SetLanguagePreference = function() {};
+window.SetObjectiveStatus = function() {};
+window.SetPassed     = function() {
+  cmiData['cmi.core.lesson_status'] = 'passed';
+  saveState();
+  sendStatement('completed', 'completed', { success: true, completion: true });
+};
+window.SetReachedEnd = function() {
+  cmiData['cmi.core.lesson_status'] = 'completed';
+  saveState();
+  sendStatement('completed', 'completed', { success: false, completion: true });
+};
+window.SetScore      = function(s) { cmiData['cmi.core.score.raw'] = s; isDirty = true; };
+window.TCAPI_SetCompleted = function() {
+  sendStatement('completed', 'completed', { completion: true });
+};
+window.TCAPI_SetProgressMeasure = function(val) {
+  sendStatement('progressed', 'progressed', { result: { score: { scaled: val } } });
+};
+window.WriteToDebug  = function() {};
 
 // ── Launch ────────────────────────────────────────────────────────────────────
 function launch() {
@@ -146,7 +190,7 @@ function launch() {
     frame.style.display   = 'block';
   });
 
-  // Load bridge.html first — it copies window.parent.API then redirects to course
+  // Load via bridge so window.parent.API and proxy funcs are available
   frame.src = '/bridge.html';
 }
 
